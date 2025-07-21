@@ -267,9 +267,9 @@ kubectl get nodes
 
 ## Key Configuration Files
 
-### EC2NodeClass File
+### EC2NodeClass Files
 
-We use a single EC2NodeClass file for both NodePools, as the AWS infrastructure configuration is the same for both instance types. This demonstrates the reusability benefit of separating infrastructure configuration (EC2NodeClass) from workload requirements (NodePool).
+We created separate EC2NodeClass files for each instance type, though their configurations are very similar. This approach gives us flexibility to make instance-specific optimizations if needed in the future.
 
 #### t3-large-class-final.yaml
 ```yaml
@@ -277,6 +277,28 @@ apiVersion: karpenter.k8s.aws/v1beta1
 kind: EC2NodeClass
 metadata:
   name: t3-large-class
+spec:
+  amiFamily: AL2  # Amazon Linux 2 AMI
+  instanceProfile: KarpenterNodeInstanceProfile-karpenter-cluster-v4  # IAM instance profile
+  metadataOptions:
+    httpEndpoint: enabled  # Enable metadata service
+    httpProtocolIPv6: disabled  # Disable IPv6 metadata
+    httpPutResponseHopLimit: 2  # Security setting for metadata service
+    httpTokens: required  # Require tokens for metadata service (security best practice)
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: karpenter-cluster-v4  # Select security groups by tag
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: karpenter-cluster-v4  # Select subnets by tag
+```
+
+#### t2-medium-class-final.yaml
+```yaml
+apiVersion: karpenter.k8s.aws/v1beta1
+kind: EC2NodeClass
+metadata:
+  name: t2-medium-class
 spec:
   amiFamily: AL2  # Amazon Linux 2 AMI
   instanceProfile: KarpenterNodeInstanceProfile-karpenter-cluster-v4  # IAM instance profile
@@ -405,6 +427,22 @@ This file defines the trust policy for the IAM role used by the EC2 instances pr
   ```bash
   kubectl get nodes
   ```
+
+- **kubectl describe node [node-name]**: Get detailed information about a specific node
+  ```bash
+  kubectl describe node ip-192-168-136-173.eu-west-1.compute.internal
+  ```
+  This command is particularly useful for investigating nodes in NotReady state, as it shows:
+  - Node conditions (Ready, DiskPressure, MemoryPressure, etc.)
+  - Allocated resources and capacity
+  - Events that might explain why a node is NotReady
+  - Taints that might be preventing pods from scheduling
+
+- **kubectl get nodes -o wide**: Get more detailed information about all nodes
+  ```bash
+  kubectl get nodes -o wide
+  ```
+  This shows additional columns including the internal and external IP addresses, OS image, kernel version, and container runtime.
 
 - **kubectl get nodepools**: List all NodePools in the cluster
   ```bash
