@@ -122,7 +122,7 @@ v1beta1 indicates that the API is in beta stage, version 1.
 
 ```bash
 # Create the EKS cluster with eksctl
-exsctl create cluster \
+eksctl create cluster \
   --name karpenter-cluster-v4 \
   --region eu-west-1 \
   --version 1.32 \
